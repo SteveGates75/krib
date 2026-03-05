@@ -3,72 +3,562 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Discord Clone</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Video Chat · Simple</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            background: #0a0c10;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Join Screen */
+        #join-screen {
+            background: #1a1d24;
+            padding: 40px;
+            border-radius: 24px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+
+        #join-screen h1 {
+            color: white;
+            font-size: 28px;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        #join-screen .subtitle {
+            color: #8b949e;
+            text-align: center;
+            margin-bottom: 32px;
+            font-size: 14px;
+        }
+
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        .input-group label {
+            display: block;
+            color: #8b949e;
+            margin-bottom: 6px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 12px 16px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            color: white;
+            font-size: 15px;
+            transition: all 0.2s;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #6366f1;
+            background: #161b22;
+        }
+
+        .input-group input::placeholder {
+            color: #6e7681;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .primary-btn {
+            background: #6366f1;
+            color: white;
+        }
+
+        .primary-btn:hover {
+            background: #4f52e0;
+            transform: translateY(-2px);
+        }
+
+        .secondary-btn {
+            background: #21262d;
+            color: white;
+            border: 1px solid #30363d;
+        }
+
+        .secondary-btn:hover {
+            background: #30363d;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 12px;
+            background: #0d1117;
+            color: #8b949e;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #fbbf24;
+        }
+
+        .status .dot.connected {
+            background: #10b981;
+        }
+
+        /* Main App */
+        #main-app {
+            width: 100vw;
+            height: 100vh;
+            display: none;
+            background: #0a0c10;
+        }
+
+        #main-app.active {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            background: #1a1d24;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .room-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .room-badge {
+            background: #2d2f36;
+            padding: 6px 16px;
+            border-radius: 30px;
+            color: white;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .copy-btn {
+            background: #2d2f36;
+            border: none;
+            color: #8b949e;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .copy-btn:hover {
+            background: #3d3f46;
+            color: white;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #10b981;
+            font-size: 13px;
+        }
+
+        .connection-status .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+        }
+
+        .leave-btn {
+            background: #dc2626;
+            color: white;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 13px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .leave-btn:hover {
+            background: #b91c1c;
+        }
+
+        /* Main Grid */
+        .main-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            overflow: hidden;
+        }
+
+        /* Video Section */
+        .video-section {
+            background: #0d1117;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 16px;
+            height: 100%;
+        }
+
+        .video-container {
+            background: #1a1d24;
+            border-radius: 16px;
+            overflow: hidden;
+            position: relative;
+            aspect-ratio: 16/9;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+
+        .video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .video-label {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            backdrop-filter: blur(4px);
+        }
+
+        /* Chat Section */
+        .chat-section {
+            background: #1a1d24;
+            border-left: 1px solid #30363d;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 20px;
+            border-bottom: 1px solid #30363d;
+        }
+
+        .chat-header h3 {
+            color: white;
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+
+        .users-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .user-badge {
+            background: #2d2f36;
+            color: #8b949e;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .user-badge.online::before {
+            content: "";
+            width: 6px;
+            height: 6px;
+            background: #10b981;
+            border-radius: 50%;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .message {
+            background: #2d2f36;
+            padding: 12px 16px;
+            border-radius: 16px;
+            max-width: 85%;
+        }
+
+        .message.own {
+            background: #6366f1;
+            align-self: flex-end;
+        }
+
+        .message .sender {
+            font-size: 11px;
+            color: #8b949e;
+            margin-bottom: 4px;
+        }
+
+        .message.own .sender {
+            color: #c7d2fe;
+        }
+
+        .message .text {
+            color: white;
+            font-size: 14px;
+            line-height: 1.4;
+            word-break: break-word;
+        }
+
+        .message .time {
+            font-size: 10px;
+            color: #6e7681;
+            margin-top: 4px;
+            text-align: right;
+        }
+
+        .chat-input-area {
+            padding: 20px;
+            border-top: 1px solid #30363d;
+            display: flex;
+            gap: 12px;
+        }
+
+        .chat-input-area input {
+            flex: 1;
+            padding: 12px 16px;
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 30px;
+            color: white;
+            font-size: 14px;
+        }
+
+        .chat-input-area input:focus {
+            outline: none;
+            border-color: #6366f1;
+        }
+
+        .chat-input-area button {
+            width: 44px;
+            height: 44px;
+            border-radius: 22px;
+            background: #6366f1;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .chat-input-area button:hover {
+            background: #4f52e0;
+        }
+
+        /* Control Bar */
+        .control-bar {
+            background: #1a1d24;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            border-top: 1px solid #30363d;
+        }
+
+        .control-btn {
+            background: #2d2f36;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            min-width: 120px;
+            justify-content: center;
+        }
+
+        .control-btn.active {
+            background: #6366f1;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+
+        .control-btn.danger {
+            background: #dc2626;
+        }
+
+        .screen-indicator {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: #dc2626;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 30px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+            .chat-section {
+                display: none;
+            }
+            .control-btn span {
+                display: none;
+            }
+            .control-btn {
+                min-width: auto;
+                padding: 12px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="app-container">
-        <!-- Login Screen -->
-        <div id="login-screen" class="screen">
-            <h1>🎥 My Discord Clone</h1>
-            <div class="login-form">
-                <input type="text" id="username-input" placeholder="Enter your name" required>
-                <div class="room-options">
-                    <input type="text" id="room-id-input" placeholder="Room ID (leave empty for new room)">
-                    <button onclick="joinRoom()">Join Room</button>
-                    <button onclick="createRoom()" class="secondary">Create New Room</button>
-                </div>
-            </div>
+    <!-- Join Screen -->
+    <div id="join-screen">
+        <h1>👋 Video Chat</h1>
+        <div class="subtitle">Connect with friends in HD</div>
+        
+        <div class="input-group">
+            <label>Your name</label>
+            <input type="text" id="username" placeholder="Enter your name" autocomplete="off">
         </div>
-
-        <!-- Main App Screen -->
-        <div id="main-screen" class="screen hidden">
-            <div class="main-container">
-                <!-- Sidebar -->
-                <div class="sidebar">
-                    <div class="room-info">
-                        <h3 id="current-room">Room: </h3>
-                        <button onclick="copyRoomId()" class="copy-btn">📋 Copy Room ID</button>
-                    </div>
-                    <div class="users-list">
-                        <h4>Users Online</h4>
-                        <div id="users-container"></div>
-                    </div>
-                    <div class="controls">
-                        <button onclick="toggleAudio()" id="audio-btn" class="control-btn active">🎤 Mute</button>
-                        <button onclick="toggleVideo()" id="video-btn" class="control-btn active">📹 Stop Video</button>
-                        <button onclick="toggleScreenShare()" id="screen-btn" class="control-btn">🖥️ Share Screen</button>
-                        <button onclick="leaveRoom()" class="control-btn danger">🚪 Leave</button>
-                    </div>
-                </div>
-
-                <!-- Main Content -->
-                <div class="main-content">
-                    <!-- Video Grid -->
-                    <div class="video-grid" id="video-grid">
-                        <div class="video-container" id="local-video-container">
-                            <video id="local-video" autoplay playsinline muted></video>
-                            <div class="video-label">You</div>
-                        </div>
-                    </div>
-
-                    <!-- Chat Section -->
-                    <div class="chat-section">
-                        <div class="chat-header">
-                            <h4>Chat</h4>
-                        </div>
-                        <div class="chat-messages" id="chat-messages"></div>
-                        <div class="chat-input">
-                            <input type="text" id="message-input" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
-                            <button onclick="sendMessage()">Send</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+        
+        <div class="input-group">
+            <label>Room ID</label>
+            <input type="text" id="room-id" placeholder="Enter room ID or leave empty">
+        </div>
+        
+        <div class="button-group">
+            <button class="primary-btn" onclick="joinRoom()">Join Room</button>
+            <button class="secondary-btn" onclick="createRoom()">Create Room</button>
+        </div>
+        
+        <div class="status" id="connection-status">
+            <span class="dot" id="status-dot"></span>
+            <span id="status-text">Connecting to server...</span>
         </div>
     </div>
 
-    <!-- Socket.io and client script -->
+    <!-- Main App -->
+    <div id="main-app">
+        <div class="top-bar">
+            <div class="room-info">
+                <div class="room-badge">
+                    <span>🏠</span>
+                    <span id="room-display">Room: </span>
+                </div>
+                <button class="copy-btn" onclick="copyRoomId()">
+                    <span>📋</span> Copy
+                </button>
+            </div>
+            
+            <div class="connection-status">
+                <span class="dot"></span>
+                <span>Connected</span>
+            </div>
+            
+            <button class="leave-btn" onclick="leaveRoom()">Leave Room</button>
+        </div>
+
+        <div class="main-grid">
+            <!-- Video Grid -->
+            <div class="video-section">
+                <div class="video-grid" id="video-grid">
+                    <!-- Videos will be added here -->
+                </div>
+            </div>
+
+            <!-- Chat -->
+            <div class="chat-section">
+                <div class="chat-header">
+                    <h3>📱 Chat · <span id="user-count">0</span> online</h3>
+                    <div class="users-list" id="users-list"></div>
+                </div>
+
+                <div class="chat-messages" id="chat-messages"></div>
+
+                <div class="chat-input-area">
+                    <input type="text" id="message-input" placeholder="Type a message..." autocomplete="off">
+                    <button onclick="sendMessage()">📤</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="control-bar">
+            <button class="control-btn active" id="audio-btn" onclick="toggleAudio()">
+                <span>🎤</span>
+                <span>Mute</span>
+            </button>
+            <button class="control-btn active" id="video-btn" onclick="toggleVideo()">
+                <span>📹</span>
+                <span>Stop Video</span>
+            </button>
+            <button class="control-btn" id="screen-btn" onclick="toggleScreenShare()">
+                <span>🖥️</span>
+                <span>Share Screen</span>
+            </button>
+        </div>
+    </div>
+
     <script src="/socket.io/socket.io.js"></script>
     <script src="client.js"></script>
 </body>
