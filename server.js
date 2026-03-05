@@ -10,8 +10,7 @@ const io = socketIO(server, {
     origin: "*",
     methods: ["GET", "POST"]
   },
-  transports: ['websocket', 'polling'],
-  allowEIO3: true
+  transports: ['websocket', 'polling']
 });
 
 // Store rooms
@@ -26,8 +25,8 @@ app.get('/', (req, res) => {
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    socket.on('join-room', (roomId, username) => {
-        console.log(`${username} joining ${roomId}`);
+    socket.on('join-room', (roomId, username, isMobile) => {
+        console.log(`${username} (${isMobile ? 'mobile' : 'desktop'}) joining ${roomId}`);
         
         socket.rooms.forEach(room => {
             if (room !== socket.id) {
@@ -40,19 +39,21 @@ io.on('connection', (socket) => {
         if (!rooms.has(roomId)) {
             rooms.set(roomId, new Map());
         }
-        rooms.get(roomId).set(socket.id, username);
+        rooms.get(roomId).set(socket.id, { username, isMobile });
 
         // Send existing users to new user
-        const users = Array.from(rooms.get(roomId)).map(([id, name]) => ({
+        const users = Array.from(rooms.get(roomId)).map(([id, data]) => ({
             userId: id,
-            username: name
+            username: data.username,
+            isMobile: data.isMobile
         }));
         socket.emit('all-users', users);
 
         // Notify others
         socket.to(roomId).emit('user-connected', {
             userId: socket.id,
-            username: username
+            username: username,
+            isMobile: isMobile
         });
     });
 
@@ -92,12 +93,12 @@ io.on('connection', (socket) => {
     socket.on('disconnect', () => {
         rooms.forEach((users, roomId) => {
             if (users.has(socket.id)) {
-                const username = users.get(socket.id);
+                const userData = users.get(socket.id);
                 users.delete(socket.id);
                 
                 socket.to(roomId).emit('user-disconnected', {
                     userId: socket.id,
-                    username: username
+                    username: userData.username
                 });
 
                 if (users.size === 0) {

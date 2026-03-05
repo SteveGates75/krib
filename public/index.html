@@ -2,104 +2,118 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Video Chat</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Video Chat · Laptop & Mobile</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
         }
 
         body {
-            background: #1a1a1a;
+            background: #0f172a;
             min-height: 100vh;
             display: flex;
-            justify-content: center;
             align-items: center;
+            justify-content: center;
         }
 
         /* Join Screen */
         #join-screen {
-            background: #2d2d2d;
-            padding: 30px;
-            border-radius: 10px;
+            background: #1e293b;
+            padding: clamp(20px, 5vw, 40px);
+            border-radius: 24px;
             width: 90%;
-            max-width: 400px;
+            max-width: 450px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            margin: 20px;
         }
 
         h1 {
             color: white;
+            font-size: clamp(24px, 6vw, 32px);
             text-align: center;
-            margin-bottom: 20px;
-            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: clamp(12px, 3vw, 14px);
         }
 
         .input-group {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
         }
 
         .input-group input {
             width: 100%;
-            padding: 12px;
-            background: #3d3d3d;
-            border: 1px solid #4d4d4d;
-            border-radius: 5px;
+            padding: clamp(12px, 3vw, 16px);
+            background: #334155;
+            border: 1px solid #475569;
+            border-radius: 12px;
             color: white;
-            font-size: 16px;
+            font-size: clamp(14px, 4vw, 16px);
+            -webkit-appearance: none;
         }
 
         .input-group input:focus {
             outline: none;
-            border-color: #007bff;
+            border-color: #3b82f6;
         }
 
         .input-group input::placeholder {
-            color: #888;
+            color: #94a3b8;
         }
 
         .button-group {
             display: flex;
-            gap: 10px;
-            margin: 20px 0;
+            gap: 12px;
+            margin: 25px 0;
+            flex-wrap: wrap;
         }
 
-        button {
+        .button-group button {
             flex: 1;
-            padding: 12px;
+            min-width: 120px;
+            padding: clamp(12px, 3vw, 16px);
             border: none;
-            border-radius: 5px;
-            font-size: 16px;
+            border-radius: 12px;
+            font-size: clamp(14px, 4vw, 16px);
+            font-weight: 600;
             cursor: pointer;
             transition: 0.2s;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .primary {
-            background: #007bff;
+        .primary-btn {
+            background: #3b82f6;
             color: white;
         }
 
-        .primary:hover {
-            background: #0056b3;
+        .primary-btn:hover {
+            background: #2563eb;
         }
 
-        .secondary {
-            background: #28a745;
+        .secondary-btn {
+            background: #10b981;
             color: white;
         }
 
-        .secondary:hover {
-            background: #1e7e34;
+        .secondary-btn:hover {
+            background: #059669;
         }
 
         .status {
             text-align: center;
-            color: #888;
-            font-size: 14px;
-            padding: 10px;
-            background: #3d3d3d;
-            border-radius: 5px;
+            color: #94a3b8;
+            font-size: clamp(12px, 3vw, 14px);
+            padding: 12px;
+            background: #334155;
+            border-radius: 12px;
         }
 
         /* Main App */
@@ -108,7 +122,7 @@
             height: 100vh;
             display: none;
             flex-direction: column;
-            background: #1a1a1a;
+            background: #0f172a;
         }
 
         #main-app.active {
@@ -117,64 +131,94 @@
 
         /* Top Bar */
         .top-bar {
-            background: #2d2d2d;
-            padding: 15px 20px;
+            background: #1e293b;
+            padding: clamp(10px, 2vw, 16px) clamp(15px, 3vw, 24px);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid #4d4d4d;
+            border-bottom: 1px solid #334155;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .room-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
         }
 
         .room-badge {
-            background: #3d3d3d;
-            padding: 8px 15px;
-            border-radius: 5px;
+            background: #334155;
+            padding: 8px 16px;
+            border-radius: 30px;
             color: white;
-            font-size: 14px;
+            font-size: clamp(12px, 3vw, 14px);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .copy-btn {
-            background: #3d3d3d;
+            background: #334155;
             color: white;
             border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            margin-left: 10px;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-size: clamp(12px, 3vw, 14px);
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .leave-btn {
-            background: #dc3545;
+            background: #ef4444;
             color: white;
             border: none;
             padding: 8px 20px;
-            border-radius: 5px;
+            border-radius: 30px;
+            font-size: clamp(12px, 3vw, 14px);
             cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        /* Main Grid */
-        .main-grid {
+        .connection-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: #10b981;
+            font-size: clamp(12px, 3vw, 14px);
+        }
+
+        /* Main Content */
+        .main-content {
             flex: 1;
-            display: grid;
-            grid-template-columns: 1fr 300px;
+            display: flex;
+            flex-direction: column;
             overflow: hidden;
+            position: relative;
         }
 
         /* Video Grid */
         .video-grid {
-            padding: 20px;
+            flex: 1;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: clamp(10px, 2vw, 16px);
+            padding: clamp(10px, 2vw, 16px);
             overflow-y: auto;
+            background: #0f172a;
         }
 
         .video-container {
-            background: #2d2d2d;
-            border-radius: 10px;
+            background: #1e293b;
+            border-radius: 16px;
             overflow: hidden;
             position: relative;
             aspect-ratio: 16/9;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
         }
 
         .video-container video {
@@ -188,171 +232,297 @@
             position: absolute;
             bottom: 10px;
             left: 10px;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0, 0, 0, 0.6);
             color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-size: 12px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: clamp(11px, 2.5vw, 12px);
+            backdrop-filter: blur(4px);
         }
 
-        /* Chat */
-        .chat-section {
-            background: #2d2d2d;
-            border-left: 1px solid #4d4d4d;
+        /* Mobile Chat Toggle */
+        .chat-toggle {
+            position: fixed;
+            bottom: 80px;
+            right: 20px;
+            background: #3b82f6;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 25px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+            z-index: 100;
+            cursor: pointer;
+            border: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Chat Panel */
+        .chat-panel {
+            width: 300px;
+            background: #1e293b;
+            border-left: 1px solid #334155;
             display: flex;
             flex-direction: column;
+            transition: transform 0.3s ease;
         }
 
         .chat-header {
-            padding: 15px;
-            border-bottom: 1px solid #4d4d4d;
+            padding: 20px;
+            border-bottom: 1px solid #334155;
+        }
+
+        .chat-header h3 {
             color: white;
+            font-size: clamp(14px, 3vw, 16px);
+            margin-bottom: 10px;
         }
 
         .users-list {
-            padding: 10px 15px;
-            border-bottom: 1px solid #4d4d4d;
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
         }
 
         .user-badge {
-            background: #3d3d3d;
-            color: #888;
-            padding: 4px 10px;
-            border-radius: 15px;
+            background: #334155;
+            color: #94a3b8;
+            padding: 4px 12px;
+            border-radius: 20px;
             font-size: 12px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
-        .user-badge.online {
-            color: #28a745;
+        .user-badge.online::before {
+            content: "";
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
         }
 
         .chat-messages {
             flex: 1;
-            padding: 15px;
+            padding: 20px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 12px;
         }
 
         .message {
-            background: #3d3d3d;
-            padding: 10px;
-            border-radius: 5px;
-            max-width: 80%;
+            background: #334155;
+            padding: 10px 15px;
+            border-radius: 16px;
+            max-width: 85%;
+            align-self: flex-start;
         }
 
         .message.own {
-            background: #007bff;
+            background: #3b82f6;
             align-self: flex-end;
         }
 
         .message .sender {
             font-size: 11px;
-            color: #aaa;
-            margin-bottom: 3px;
+            color: #94a3b8;
+            margin-bottom: 4px;
         }
 
         .message.own .sender {
-            color: #fff;
+            color: #bfdbfe;
         }
 
         .message .text {
             color: white;
             font-size: 13px;
+            word-break: break-word;
         }
 
         .message .time {
             font-size: 9px;
-            color: #aaa;
-            margin-top: 3px;
+            color: #94a3b8;
+            margin-top: 4px;
             text-align: right;
         }
 
         .chat-input {
-            padding: 15px;
-            border-top: 1px solid #4d4d4d;
+            padding: 20px;
+            border-top: 1px solid #334155;
             display: flex;
             gap: 10px;
         }
 
         .chat-input input {
             flex: 1;
-            padding: 10px;
-            background: #3d3d3d;
-            border: 1px solid #4d4d4d;
-            border-radius: 5px;
+            padding: 12px;
+            background: #334155;
+            border: 1px solid #475569;
+            border-radius: 25px;
             color: white;
+            font-size: 14px;
+            -webkit-appearance: none;
         }
 
         .chat-input input:focus {
             outline: none;
-            border-color: #007bff;
+            border-color: #3b82f6;
         }
 
         .chat-input button {
-            padding: 10px 20px;
-            background: #007bff;
+            width: 44px;
+            height: 44px;
+            border-radius: 22px;
+            background: #3b82f6;
             color: white;
             border: none;
-            border-radius: 5px;
+            font-size: 18px;
             cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
         }
 
         /* Control Bar */
         .control-bar {
-            background: #2d2d2d;
-            padding: 15px 20px;
+            background: #1e293b;
+            padding: clamp(10px, 2vw, 16px);
             display: flex;
             justify-content: center;
-            gap: 15px;
-            border-top: 1px solid #4d4d4d;
+            gap: clamp(10px, 2vw, 15px);
+            border-top: 1px solid #334155;
+            flex-wrap: wrap;
         }
 
         .control-btn {
-            padding: 10px 25px;
+            background: #334155;
+            color: white;
             border: none;
-            border-radius: 5px;
-            font-size: 14px;
+            padding: clamp(10px, 2vw, 12px) clamp(15px, 3vw, 25px);
+            border-radius: 30px;
+            font-size: clamp(12px, 3vw, 14px);
+            font-weight: 500;
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
             transition: 0.2s;
             min-width: 100px;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
         }
 
         .control-btn.active {
-            background: #007bff;
-            color: white;
+            background: #3b82f6;
         }
 
         .control-btn.inactive {
-            background: #dc3545;
-            color: white;
+            background: #ef4444;
         }
 
-        /* Brave Browser Warning */
-        .brave-warning {
-            background: #ffc107;
-            color: #000;
-            padding: 10px;
-            border-radius: 5px;
-            margin-bottom: 15px;
-            font-size: 13px;
+        /* Responsive Layout */
+        .desktop-layout {
+            display: flex;
+            height: 100%;
+            width: 100%;
+        }
+
+        .mobile-layout {
             display: none;
+            height: 100%;
+            width: 100%;
+            position: relative;
         }
 
-        .brave-warning.show {
-            display: block;
-        }
-
+        /* Mobile Styles */
         @media (max-width: 768px) {
-            .main-grid {
-                grid-template-columns: 1fr;
-            }
-            .chat-section {
+            .desktop-layout {
                 display: none;
+            }
+
+            .mobile-layout {
+                display: flex;
+                flex-direction: column;
+            }
+
+            .video-grid {
+                grid-template-columns: 1fr;
+                padding-bottom: 70px;
+            }
+
+            .video-container {
+                max-height: 40vh;
+            }
+
+            .chat-toggle {
+                display: flex;
+            }
+
+            .chat-panel {
+                position: fixed;
+                top: 0;
+                right: 0;
+                bottom: 0;
+                width: 85%;
+                max-width: 350px;
+                transform: translateX(100%);
+                z-index: 1000;
+                box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+            }
+
+            .chat-panel.open {
+                transform: translateX(0);
+            }
+
+            .control-bar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                background: #1e293b;
+                padding: 10px;
+                z-index: 90;
+            }
+
+            .control-btn {
+                min-width: auto;
+                padding: 12px;
+                flex: 1;
+            }
+
+            .control-btn span {
+                display: none;
+            }
+
+            .control-btn i {
+                font-size: 20px;
+            }
+
+            .room-badge {
+                max-width: 150px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+        }
+
+        /* Small phones */
+        @media (max-width: 380px) {
+            .top-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .room-info {
+                justify-content: center;
+            }
+
+            .button-group button {
+                min-width: 100%;
             }
         }
     </style>
@@ -360,11 +530,8 @@
 <body>
     <!-- Join Screen -->
     <div id="join-screen">
-        <h1>🎥 Video Chat</h1>
-        
-        <div class="brave-warning" id="brave-warning">
-            ⚠️ Using Brave? Click the Brave icon in address bar and disable Shields for this site to enable camera/mic.
-        </div>
+        <h1>📱 Video Chat</h1>
+        <div class="subtitle">Works on laptop & mobile</div>
         
         <div class="input-group">
             <input type="text" id="username" placeholder="Your name" autocomplete="off">
@@ -375,8 +542,8 @@
         </div>
         
         <div class="button-group">
-            <button class="primary" onclick="joinRoom()">Join Room</button>
-            <button class="secondary" onclick="createRoom()">New Room</button>
+            <button class="primary-btn" onclick="joinRoom()">Join Room</button>
+            <button class="secondary-btn" onclick="createRoom()">Create Room</button>
         </div>
         
         <div class="status" id="connection-status">
@@ -386,48 +553,107 @@
 
     <!-- Main App -->
     <div id="main-app">
-        <div class="top-bar">
-            <div>
-                <span class="room-badge" id="room-display">Room: </span>
-                <button class="copy-btn" onclick="copyRoomId()">Copy Room ID</button>
+        <!-- Desktop Layout -->
+        <div class="desktop-layout" id="desktop-layout">
+            <!-- Top Bar -->
+            <div style="width: 100%; position: fixed; top: 0; z-index: 10;">
+                <div class="top-bar">
+                    <div class="room-info">
+                        <span class="room-badge" id="room-display">Room: </span>
+                        <button class="copy-btn" onclick="copyRoomId()">📋 Copy</button>
+                    </div>
+                    
+                    <div class="connection-badge">
+                        <span>🟢</span>
+                        <span>Connected</span>
+                    </div>
+                    
+                    <button class="leave-btn" onclick="leaveRoom()">Leave</button>
+                </div>
             </div>
-            <button class="leave-btn" onclick="leaveRoom()">Leave Room</button>
+
+            <div style="display: flex; height: 100%; width: 100%; padding-top: 60px;">
+                <!-- Videos -->
+                <div style="flex: 1;">
+                    <div class="video-grid" id="video-grid-desktop"></div>
+                </div>
+
+                <!-- Chat -->
+                <div class="chat-panel">
+                    <div class="chat-header">
+                        <h3>💬 Chat</h3>
+                        <div class="users-list" id="users-list-desktop"></div>
+                    </div>
+                    
+                    <div class="chat-messages" id="chat-messages-desktop"></div>
+                    
+                    <div class="chat-input">
+                        <input type="text" id="message-input-desktop" placeholder="Type a message...">
+                        <button onclick="sendMessage('desktop')">📤</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Control Bar -->
+            <div style="position: fixed; bottom: 0; width: 100%;">
+                <div class="control-bar">
+                    <button class="control-btn active" id="audio-btn-desktop" onclick="toggleAudio()">
+                        🎤 <span>Mute</span>
+                    </button>
+                    <button class="control-btn active" id="video-btn-desktop" onclick="toggleVideo()">
+                        📹 <span>Stop Video</span>
+                    </button>
+                    <button class="control-btn" id="screen-btn-desktop" onclick="toggleScreenShare()">
+                        🖥️ <span>Share Screen</span>
+                    </button>
+                </div>
+            </div>
         </div>
 
-        <div class="main-grid">
-            <!-- Videos -->
-            <div class="video-grid" id="video-grid">
-                <!-- Videos will be added here -->
+        <!-- Mobile Layout -->
+        <div class="mobile-layout" id="mobile-layout">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="room-info">
+                    <span class="room-badge" id="room-display-mobile">Room: </span>
+                    <button class="copy-btn" onclick="copyRoomId()">📋</button>
+                </div>
+                <button class="leave-btn" onclick="leaveRoom()">Leave</button>
             </div>
 
-            <!-- Chat -->
-            <div class="chat-section">
+            <!-- Videos -->
+            <div class="video-grid" id="video-grid-mobile"></div>
+
+            <!-- Chat Toggle Button -->
+            <button class="chat-toggle" onclick="toggleChat()">💬</button>
+
+            <!-- Chat Panel -->
+            <div class="chat-panel" id="mobile-chat">
                 <div class="chat-header">
-                    <strong>Chat</strong> · <span id="user-count">0</span> online
+                    <h3>💬 Chat</h3>
+                    <div class="users-list" id="users-list-mobile"></div>
                 </div>
                 
-                <div class="users-list" id="users-list"></div>
-                
-                <div class="chat-messages" id="chat-messages"></div>
+                <div class="chat-messages" id="chat-messages-mobile"></div>
                 
                 <div class="chat-input">
-                    <input type="text" id="message-input" placeholder="Type a message...">
-                    <button onclick="sendMessage()">Send</button>
+                    <input type="text" id="message-input-mobile" placeholder="Type a message...">
+                    <button onclick="sendMessage('mobile')">📤</button>
                 </div>
             </div>
-        </div>
 
-        <!-- Controls -->
-        <div class="control-bar">
-            <button class="control-btn active" id="audio-btn" onclick="toggleAudio()">
-                🎤 Mute
-            </button>
-            <button class="control-btn active" id="video-btn" onclick="toggleVideo()">
-                📹 Stop Video
-            </button>
-            <button class="control-btn" id="screen-btn" onclick="toggleScreenShare()">
-                🖥️ Share Screen
-            </button>
+            <!-- Control Bar -->
+            <div class="control-bar">
+                <button class="control-btn active" id="audio-btn-mobile" onclick="toggleAudio()">
+                    🎤
+                </button>
+                <button class="control-btn active" id="video-btn-mobile" onclick="toggleVideo()">
+                    📹
+                </button>
+                <button class="control-btn" id="screen-btn-mobile" onclick="toggleScreenShare()">
+                    🖥️
+                </button>
+            </div>
         </div>
     </div>
 

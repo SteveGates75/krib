@@ -1,7 +1,7 @@
 {
-  "name": "video-chat-fixed",
+  "name": "responsive-video-chat",
   "version": "1.0.0",
-  "description": "Video chat that works on all browsers",
+  "description": "Video chat that works on laptop and mobile",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

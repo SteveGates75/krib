@@ -1,15 +1,11 @@
-// Detect Brave browser
-const isBrave = navigator.brave ? await navigator.brave.isBrave() : false;
-if (isBrave) {
-    document.getElementById('brave-warning').classList.add('show');
-}
+// Detect device
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+console.log('Device:', isMobile ? 'Mobile' : 'Desktop');
 
-// Socket connection with better error handling
+// Socket connection
 const socket = io({
     transports: ['websocket', 'polling'],
-    reconnection: true,
-    reconnectionAttempts: 10,
-    timeout: 20000
+    reconnection: true
 });
 
 // DOM elements
@@ -17,12 +13,6 @@ const joinScreen = document.getElementById('join-screen');
 const mainApp = document.getElementById('main-app');
 const usernameInput = document.getElementById('username');
 const roomIdInput = document.getElementById('room-id');
-const roomDisplay = document.getElementById('room-display');
-const videoGrid = document.getElementById('video-grid');
-const chatMessages = document.getElementById('chat-messages');
-const messageInput = document.getElementById('message-input');
-const usersList = document.getElementById('users-list');
-const userCount = document.getElementById('user-count');
 const connectionStatus = document.getElementById('connection-status');
 
 // State
@@ -32,39 +22,49 @@ let currentRoom = null;
 let username = null;
 let isAudioEnabled = true;
 let isVideoEnabled = true;
+let isScreenSharing = false;
 
-// STUN servers - multiple options for better connectivity
+// STUN servers
 const configuration = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
         { urls: 'stun:stun1.l.google.com:19302' },
         { urls: 'stun:stun2.l.google.com:19302' },
         { urls: 'stun:stun3.l.google.com:19302' },
-        { urls: 'stun:stun4.l.google.com:19302' },
-        { urls: 'stun:stun.ekiga.net' },
-        { urls: 'stun:stun.ideasip.com' },
-        { urls: 'stun:stun.schlund.de' }
+        { urls: 'stun:stun4.l.google.com:19302' }
     ]
 };
 
 // Connection status
 socket.on('connect', () => {
-    console.log('Connected to server');
+    console.log('Connected');
     connectionStatus.innerHTML = '🟢 Connected';
-    connectionStatus.style.color = '#28a745';
 });
 
 socket.on('disconnect', () => {
     console.log('Disconnected');
     connectionStatus.innerHTML = '🔴 Disconnected';
-    connectionStatus.style.color = '#888';
 });
 
-socket.on('connect_error', (error) => {
-    console.error('Connection error:', error);
-    connectionStatus.innerHTML = '🟡 Connection error - retrying...';
-    connectionStatus.style.color = '#ffc107';
-});
+// Get video grid based on device
+function getVideoGrid() {
+    return document.getElementById(isMobile ? 'video-grid-mobile' : 'video-grid-desktop');
+}
+
+// Get users list container
+function getUsersList() {
+    return document.getElementById(isMobile ? 'users-list-mobile' : 'users-list-desktop');
+}
+
+// Get chat messages container
+function getChatMessages() {
+    return document.getElementById(isMobile ? 'chat-messages-mobile' : 'chat-messages-desktop');
+}
+
+// Get message input
+function getMessageInput() {
+    return document.getElementById(isMobile ? 'message-input-mobile' : 'message-input-desktop');
+}
 
 // Join room
 async function joinRoom() {
@@ -85,14 +85,12 @@ async function joinRoom() {
     currentRoom = roomId;
     
     try {
-        // Request all permissions explicitly
-        console.log('Requesting camera and microphone...');
-        
-        // For Brave, we need to be more explicit
+        // Mobile-friendly video constraints
         const constraints = {
             video: {
-                width: { ideal: 640 }, // Lower resolution for better compatibility
-                height: { ideal: 480 }
+                width: { ideal: isMobile ? 480 : 1280 },
+                height: { ideal: isMobile ? 360 : 720 },
+                facingMode: 'user'
             },
             audio: {
                 echoCancellation: true,
@@ -104,14 +102,6 @@ async function joinRoom() {
         localStream = await navigator.mediaDevices.getUserMedia(constraints);
         
         console.log('Media access granted');
-        console.log('Audio tracks:', localStream.getAudioTracks().length);
-        console.log('Video tracks:', localStream.getVideoTracks().length);
-        
-        // Enable audio tracks explicitly
-        localStream.getAudioTracks().forEach(track => {
-            track.enabled = true;
-            console.log('Audio track enabled:', track.label);
-        });
         
         // Add local video
         addLocalVideo();
@@ -119,31 +109,20 @@ async function joinRoom() {
         // Switch to main app
         joinScreen.style.display = 'none';
         mainApp.classList.add('active');
-        roomDisplay.textContent = `Room: ${roomId}`;
+        
+        // Update room display
+        if (isMobile) {
+            document.getElementById('room-display-mobile').textContent = `Room: ${roomId}`;
+        } else {
+            document.getElementById('room-display').textContent = `Room: ${roomId}`;
+        }
         
         // Join room
-        socket.emit('join-room', roomId, username);
+        socket.emit('join-room', roomId, username, isMobile);
         
     } catch (err) {
         console.error('Media error:', err);
-        
-        let message = 'Cannot access camera/microphone.\n\n';
-        
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-            message += 'Please:\n';
-            message += '1. Click the camera icon in the address bar\n';
-            message += '2. Allow camera and microphone access\n';
-            message += '3. If using Brave, disable Shields for this site\n';
-            message += '4. Refresh the page and try again';
-        } else if (err.name === 'NotFoundError') {
-            message += 'No camera or microphone found.';
-        } else if (err.name === 'NotReadableError') {
-            message += 'Camera or microphone is busy (used by another app).';
-        } else {
-            message += 'Unknown error. Please check your devices.';
-        }
-        
-        alert(message);
+        alert('Cannot access camera/microphone. Please check permissions.');
     }
 }
 
@@ -160,7 +139,9 @@ function copyRoomId() {
 
 // Video management
 function addLocalVideo() {
-    // Remove existing local video if any
+    const videoGrid = getVideoGrid();
+    
+    // Remove existing
     const existing = document.getElementById('local-container');
     if (existing) existing.remove();
     
@@ -172,10 +153,9 @@ function addLocalVideo() {
     video.id = 'local-video';
     video.autoplay = true;
     video.playsInline = true;
-    video.muted = true; // Mute local video to prevent echo
+    video.muted = true;
     video.srcObject = localStream;
     
-    // Ensure video plays
     video.play().catch(e => console.log('Video play error:', e));
     
     const label = document.createElement('div');
@@ -188,6 +168,7 @@ function addLocalVideo() {
 }
 
 function addRemoteVideo(userId, username, stream) {
+    const videoGrid = getVideoGrid();
     let container = document.getElementById(`remote-${userId}`);
     
     if (!container) {
@@ -230,23 +211,16 @@ function createPeerConnection(targetUserId, targetUsername) {
     
     const pc = new RTCPeerConnection(configuration);
     
-    // Add all local tracks
+    // Add tracks
     localStream.getTracks().forEach(track => {
-        console.log(`Adding ${track.kind} track to peer connection`);
         pc.addTrack(track, localStream);
     });
     
     // Handle remote tracks
     pc.ontrack = (event) => {
-        console.log(`Received remote ${event.track.kind} track from:`, targetUserId);
+        console.log(`Received remote track from:`, targetUserId);
         
         if (event.streams && event.streams[0]) {
-            // Ensure audio is enabled
-            event.streams[0].getAudioTracks().forEach(track => {
-                track.enabled = true;
-                console.log('Remote audio track enabled');
-            });
-            
             addRemoteVideo(targetUserId, targetUsername, event.streams[0]);
         }
     };
@@ -265,17 +239,10 @@ function createPeerConnection(targetUserId, targetUsername) {
     pc.oniceconnectionstatechange = () => {
         console.log(`ICE state with ${targetUserId}:`, pc.iceConnectionState);
         
-        if (pc.iceConnectionState === 'connected') {
-            console.log('Successfully connected to', targetUserId);
-        } else if (pc.iceConnectionState === 'disconnected' || 
-                   pc.iceConnectionState === 'failed') {
+        if (pc.iceConnectionState === 'disconnected' || 
+            pc.iceConnectionState === 'failed') {
             removeRemoteVideo(targetUserId);
         }
-    };
-    
-    // Negotiation needed
-    pc.onnegotiationneeded = () => {
-        console.log('Negotiation needed for', targetUserId);
     };
     
     peerConnections[targetUserId] = pc;
@@ -287,7 +254,6 @@ socket.on('all-users', (users) => {
     console.log('Users in room:', users);
     updateUsersList(users);
     
-    // Connect to each user
     users.forEach(user => {
         if (user.userId !== socket.id) {
             createOffer(user.userId, user.username);
@@ -332,8 +298,6 @@ async function createOffer(targetUserId, targetUsername) {
             offer: offer,
             senderUsername: username
         });
-        
-        console.log('Offer sent to:', targetUserId);
     } catch (err) {
         console.error('Offer error:', err);
     }
@@ -353,8 +317,6 @@ socket.on('offer', async (data) => {
             target: data.sender,
             answer: answer
         });
-        
-        console.log('Answer sent to:', data.sender);
     } catch (err) {
         console.error('Answer error:', err);
     }
@@ -367,7 +329,6 @@ socket.on('answer', async (data) => {
     if (pc) {
         try {
             await pc.setRemoteDescription(data.answer);
-            console.log('Remote description set for:', data.sender);
         } catch (err) {
             console.error('Set remote description error:', err);
         }
@@ -389,6 +350,7 @@ socket.on('ice-candidate', async (data) => {
 
 // Users list
 function updateUsersList(users) {
+    const usersList = getUsersList();
     usersList.innerHTML = '';
     
     // Add self
@@ -403,33 +365,30 @@ function updateUsersList(users) {
             const badge = document.createElement('span');
             badge.className = 'user-badge online';
             badge.dataset.userId = user.userId;
-            badge.textContent = user.username;
+            badge.textContent = user.username + (user.isMobile ? ' 📱' : ' 💻');
             usersList.appendChild(badge);
         }
     });
-    
-    userCount.textContent = users.length + 1;
 }
 
 function addUserToList(userId, username) {
+    const usersList = getUsersList();
+    
+    // Check if already exists
+    if (document.querySelector(`[data-user-id="${userId}"]`)) return;
+    
     const badge = document.createElement('span');
     badge.className = 'user-badge online';
     badge.dataset.userId = userId;
     badge.textContent = username;
     usersList.appendChild(badge);
-    
-    userCount.textContent = document.querySelectorAll('.user-badge').length;
 }
 
 function removeUserFromList(userId) {
-    const badges = document.querySelectorAll('.user-badge');
-    badges.forEach(badge => {
-        if (badge.dataset.userId === userId) {
-            badge.remove();
-        }
-    });
-    
-    userCount.textContent = document.querySelectorAll('.user-badge').length;
+    const badge = document.querySelector(`[data-user-id="${userId}"]`);
+    if (badge) {
+        badge.remove();
+    }
 }
 
 // Chat
@@ -437,25 +396,38 @@ socket.on('chat-message', (data) => {
     displayMessage(data);
 });
 
-function sendMessage() {
-    const message = messageInput.value.trim();
+function sendMessage(device) {
+    const input = getMessageInput();
+    const message = input.value.trim();
+    
     if (message && currentRoom) {
         socket.emit('chat-message', {
             roomId: currentRoom,
             username: username,
             message: message
         });
-        messageInput.value = '';
+        input.value = '';
     }
 }
 
-messageInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        sendMessage();
+// Handle enter key
+document.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter' && !isMobile) {
+        sendMessage('desktop');
     }
 });
 
+if (isMobile) {
+    document.getElementById('message-input-mobile').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            sendMessage('mobile');
+        }
+    });
+}
+
 function displayMessage(data) {
+    const chatMessages = getChatMessages();
+    
     const messageDiv = document.createElement('div');
     messageDiv.className = `message ${data.username === username ? 'own' : ''}`;
     
@@ -469,6 +441,12 @@ function displayMessage(data) {
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
+// Mobile chat toggle
+function toggleChat() {
+    const chatPanel = document.getElementById('mobile-chat');
+    chatPanel.classList.toggle('open');
+}
+
 // Controls
 function toggleAudio() {
     if (localStream) {
@@ -477,12 +455,22 @@ function toggleAudio() {
             isAudioEnabled = !isAudioEnabled;
             audioTrack.enabled = isAudioEnabled;
             
-            const btn = document.getElementById('audio-btn');
-            btn.classList.toggle('active', isAudioEnabled);
-            btn.classList.toggle('inactive', !isAudioEnabled);
-            btn.textContent = isAudioEnabled ? '🎤 Mute' : '🔇 Unmute';
+            // Update buttons
+            const desktopBtn = document.getElementById('audio-btn-desktop');
+            const mobileBtn = document.getElementById('audio-btn-mobile');
             
-            console.log('Audio', isAudioEnabled ? 'enabled' : 'disabled');
+            if (isAudioEnabled) {
+                desktopBtn.innerHTML = '🎤 <span>Mute</span>';
+                mobileBtn.innerHTML = '🎤';
+            } else {
+                desktopBtn.innerHTML = '🔇 <span>Unmute</span>';
+                mobileBtn.innerHTML = '🔇';
+            }
+            
+            desktopBtn.classList.toggle('active', isAudioEnabled);
+            desktopBtn.classList.toggle('inactive', !isAudioEnabled);
+            mobileBtn.classList.toggle('active', isAudioEnabled);
+            mobileBtn.classList.toggle('inactive', !isAudioEnabled);
         }
     }
 }
@@ -494,24 +482,36 @@ function toggleVideo() {
             isVideoEnabled = !isVideoEnabled;
             videoTrack.enabled = isVideoEnabled;
             
-            const btn = document.getElementById('video-btn');
-            btn.classList.toggle('active', isVideoEnabled);
-            btn.classList.toggle('inactive', !isVideoEnabled);
-            btn.textContent = isVideoEnabled ? '📹 Stop Video' : '📹 Start Video';
+            // Update buttons
+            const desktopBtn = document.getElementById('video-btn-desktop');
+            const mobileBtn = document.getElementById('video-btn-mobile');
+            
+            if (isVideoEnabled) {
+                desktopBtn.innerHTML = '📹 <span>Stop Video</span>';
+                mobileBtn.innerHTML = '📹';
+            } else {
+                desktopBtn.innerHTML = '🚫 <span>Start Video</span>';
+                mobileBtn.innerHTML = '🚫';
+            }
+            
+            desktopBtn.classList.toggle('active', isVideoEnabled);
+            desktopBtn.classList.toggle('inactive', !isVideoEnabled);
+            mobileBtn.classList.toggle('active', isVideoEnabled);
+            mobileBtn.classList.toggle('inactive', !isVideoEnabled);
         }
     }
 }
 
 async function toggleScreenShare() {
-    try {
-        if (!document.getElementById('screen-btn').classList.contains('active')) {
+    if (!isScreenSharing) {
+        try {
             const screenStream = await navigator.mediaDevices.getDisplayMedia({
                 video: true
             });
             
             const videoTrack = screenStream.getVideoTracks()[0];
             
-            // Replace track in all peer connections
+            // Replace in peer connections
             Object.values(peerConnections).forEach(pc => {
                 const sender = pc.getSenders().find(s => s.track?.kind === 'video');
                 if (sender) {
@@ -534,15 +534,22 @@ async function toggleScreenShare() {
                 stopScreenShare();
             };
             
-            const btn = document.getElementById('screen-btn');
-            btn.classList.add('active');
-            btn.textContent = '🖥️ Stop Sharing';
+            isScreenSharing = true;
             
-        } else {
-            await stopScreenShare();
+            // Update buttons
+            const desktopBtn = document.getElementById('screen-btn-desktop');
+            const mobileBtn = document.getElementById('screen-btn-mobile');
+            
+            desktopBtn.innerHTML = '🖥️ <span>Stop Sharing</span>';
+            mobileBtn.innerHTML = '🖥️';
+            desktopBtn.classList.add('active');
+            mobileBtn.classList.add('active');
+            
+        } catch (err) {
+            console.error('Screen share error:', err);
         }
-    } catch (err) {
-        console.error('Screen share error:', err);
+    } else {
+        stopScreenShare();
     }
 }
 
@@ -574,9 +581,16 @@ async function stopScreenShare() {
             localVideo.srcObject = localStream;
         }
         
-        const btn = document.getElementById('screen-btn');
-        btn.classList.remove('active');
-        btn.textContent = '🖥️ Share Screen';
+        isScreenSharing = false;
+        
+        // Update buttons
+        const desktopBtn = document.getElementById('screen-btn-desktop');
+        const mobileBtn = document.getElementById('screen-btn-mobile');
+        
+        desktopBtn.innerHTML = '🖥️ <span>Share Screen</span>';
+        mobileBtn.innerHTML = '🖥️';
+        desktopBtn.classList.remove('active');
+        mobileBtn.classList.remove('active');
         
     } catch (err) {
         console.error('Stop screen share error:', err);
@@ -593,10 +607,20 @@ function leaveRoom() {
         localStream.getTracks().forEach(track => track.stop());
     }
     
-    // Clear grid
-    videoGrid.innerHTML = '';
-    chatMessages.innerHTML = '';
-    usersList.innerHTML = '';
+    // Clear video grids
+    document.getElementById('video-grid-desktop').innerHTML = '';
+    document.getElementById('video-grid-mobile').innerHTML = '';
+    
+    // Clear chats
+    document.getElementById('chat-messages-desktop').innerHTML = '';
+    document.getElementById('chat-messages-mobile').innerHTML = '';
+    
+    // Clear users lists
+    document.getElementById('users-list-desktop').innerHTML = '';
+    document.getElementById('users-list-mobile').innerHTML = '';
+    
+    // Close mobile chat if open
+    document.getElementById('mobile-chat').classList.remove('open');
     
     // Show join screen
     mainApp.classList.remove('active');
@@ -605,4 +629,5 @@ function leaveRoom() {
     // Reset
     currentRoom = null;
     username = null;
+    isScreenSharing = false;
 }
