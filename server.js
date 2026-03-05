@@ -5,13 +5,22 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = socketIO(server);
+
+// Updated Socket.io configuration for Render
+const io = socketIO(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
+});
 
 // Store active rooms and users
 const rooms = new Map();
 
 // Serve static files from public folder
-app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Serve the main page
 app.get('/', (req, res) => {
@@ -20,23 +29,28 @@ app.get('/', (req, res) => {
 
 // Socket.io connection handling
 io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
+    console.log('A user connected:', socket.id, 'IP:', socket.handshake.address);
 
     // Create or join a room
     socket.on('join-room', (roomId, username) => {
-        // Leave previous rooms
+        console.log(`${username} attempting to join room ${roomId}`);
+        
+        // Leave previous rooms (except the socket's own room)
         socket.rooms.forEach(room => {
             if (room !== socket.id) {
                 socket.leave(room);
+                console.log(`${username} left room ${room}`);
             }
         });
 
         // Join new room
         socket.join(roomId);
+        console.log(`${username} joined room ${roomId}`);
         
         // Store room info
         if (!rooms.has(roomId)) {
             rooms.set(roomId, new Map());
+            console.log(`Created new room: ${roomId}`);
         }
         rooms.get(roomId).set(socket.id, username);
 
@@ -51,13 +65,14 @@ io.on('connection', (socket) => {
             userId: id,
             username: name
         }));
+        
         socket.emit('existing-users', users);
-
-        console.log(`${username} joined room ${roomId}`);
+        console.log(`Sent ${users.length} existing users to ${username}`);
     });
 
     // Handle text messages
     socket.on('send-message', (data) => {
+        console.log(`Message from ${data.username} in room ${data.roomId}: ${data.message}`);
         io.to(data.roomId).emit('receive-message', {
             userId: socket.id,
             username: data.username,
@@ -68,6 +83,7 @@ io.on('connection', (socket) => {
 
     // WebRTC signaling events
     socket.on('offer', (data) => {
+        console.log(`Offer from ${socket.id} to ${data.target}`);
         socket.to(data.target).emit('offer', {
             offer: data.offer,
             sender: socket.id
@@ -75,6 +91,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('answer', (data) => {
+        console.log(`Answer from ${socket.id} to ${data.target}`);
         socket.to(data.target).emit('answer', {
             answer: data.answer,
             sender: socket.id
@@ -82,6 +99,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('ice-candidate', (data) => {
+        console.log(`ICE candidate from ${socket.id} to ${data.target}`);
         socket.to(data.target).emit('ice-candidate', {
             candidate: data.candidate,
             sender: socket.id
@@ -90,6 +108,8 @@ io.on('connection', (socket) => {
 
     // Handle disconnection
     socket.on('disconnect', () => {
+        console.log('User disconnected:', socket.id);
+        
         rooms.forEach((users, roomId) => {
             if (users.has(socket.id)) {
                 const username = users.get(socket.id);
@@ -100,19 +120,23 @@ io.on('connection', (socket) => {
                     userId: socket.id,
                     username: username
                 });
+                console.log(`${username} left room ${roomId}`);
 
                 // Clean up empty rooms
                 if (users.size === 0) {
                     rooms.delete(roomId);
+                    console.log(`Room ${roomId} deleted (empty)`);
                 }
             }
         });
-        console.log('User disconnected:', socket.id);
     });
 });
 
-// Start server
-const PORT = 3000;
-server.listen(PORT, () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+// For Render, use the PORT environment variable
+const PORT = process.env.PORT || 3000;
+
+server.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server is running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`WebSocket server ready`);
 });

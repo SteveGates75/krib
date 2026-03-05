@@ -76,17 +76,17 @@ button:hover {
     transform: translateY(-2px);
 }
 
-button.primary {
+.primary {
     background: #667eea;
     color: white;
 }
 
-button.secondary {
+.secondary {
     background: #48bb78;
     color: white;
 }
 
-button.danger {
+.danger {
     background: #f56565;
     color: white;
 }
