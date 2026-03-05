@@ -6,15 +6,9 @@ const path = require('path');
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  },
+  cors: { origin: "*" },
   transports: ['websocket', 'polling']
 });
-
-// Store rooms
-const rooms = new Map();
 
 app.use(express.static('public'));
 
@@ -22,47 +16,49 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Store users in rooms
+const rooms = {};
+
 io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    socket.on('join-room', (roomId, username, isMobile) => {
-        console.log(`${username} (${isMobile ? 'mobile' : 'desktop'}) joining ${roomId}`);
+    socket.on('join', (data) => {
+        console.log(data.username, 'joined room', data.room);
         
-        socket.rooms.forEach(room => {
-            if (room !== socket.id) {
-                socket.leave(room);
-            }
-        });
-
-        socket.join(roomId);
+        socket.join(data.room);
         
-        if (!rooms.has(roomId)) {
-            rooms.set(roomId, new Map());
-        }
-        rooms.get(roomId).set(socket.id, { username, isMobile });
-
-        // Send existing users to new user
-        const users = Array.from(rooms.get(roomId)).map(([id, data]) => ({
-            userId: id,
-            username: data.username,
-            isMobile: data.isMobile
-        }));
-        socket.emit('all-users', users);
-
-        // Notify others
-        socket.to(roomId).emit('user-connected', {
-            userId: socket.id,
-            username: username,
-            isMobile: isMobile
+        // Store user
+        if (!rooms[data.room]) rooms[data.room] = [];
+        rooms[data.room].push({
+            id: socket.id,
+            name: data.username
         });
+        
+        // Send list of users in room
+        io.to(data.room).emit('users', rooms[data.room]);
+        
+        // Send chat history
+        socket.emit('chat-history', global.chatHistory?.[data.room] || []);
+    });
+
+    // Chat messages
+    socket.on('chat-message', (data) => {
+        console.log('Chat:', data);
+        
+        // Store in history
+        if (!global.chatHistory) global.chatHistory = {};
+        if (!global.chatHistory[data.room]) global.chatHistory[data.room] = [];
+        global.chatHistory[data.room].push(data);
+        
+        // Send to room
+        io.to(data.room).emit('chat-message', data);
     });
 
     // WebRTC signaling
     socket.on('offer', (data) => {
         socket.to(data.target).emit('offer', {
             offer: data.offer,
-            sender: socket.id,
-            senderUsername: data.senderUsername
+            sender: socket.id
         });
     });
 
@@ -80,32 +76,12 @@ io.on('connection', (socket) => {
         });
     });
 
-    // Chat
-    socket.on('chat-message', (data) => {
-        io.to(data.roomId).emit('chat-message', {
-            username: data.username,
-            message: data.message,
-            time: new Date().toLocaleTimeString()
-        });
-    });
-
-    // Disconnect
     socket.on('disconnect', () => {
-        rooms.forEach((users, roomId) => {
-            if (users.has(socket.id)) {
-                const userData = users.get(socket.id);
-                users.delete(socket.id);
-                
-                socket.to(roomId).emit('user-disconnected', {
-                    userId: socket.id,
-                    username: userData.username
-                });
-
-                if (users.size === 0) {
-                    rooms.delete(roomId);
-                }
-            }
-        });
+        // Remove user from rooms
+        for (let room in rooms) {
+            rooms[room] = rooms[room].filter(u => u.id !== socket.id);
+            io.to(room).emit('users', rooms[room]);
+        }
     });
 });
 

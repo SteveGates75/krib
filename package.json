@@ -1,7 +1,7 @@
 {
-  "name": "responsive-video-chat",
+  "name": "simple-working-chat",
   "version": "1.0.0",
-  "description": "Video chat that works on laptop and mobile",
+  "description": "Simple working chat with video",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

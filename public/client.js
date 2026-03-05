@@ -1,7 +1,3 @@
-// Detect device
-const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-console.log('Device:', isMobile ? 'Mobile' : 'Desktop');
-
 // Socket connection
 const socket = io({
     transports: ['websocket', 'polling'],
@@ -12,7 +8,13 @@ const socket = io({
 const joinScreen = document.getElementById('join-screen');
 const mainApp = document.getElementById('main-app');
 const usernameInput = document.getElementById('username');
-const roomIdInput = document.getElementById('room-id');
+const roomInput = document.getElementById('room');
+const roomDisplay = document.getElementById('room-display');
+const videoGrid = document.getElementById('video-grid');
+const chatMessages = document.getElementById('chat-messages');
+const messageInput = document.getElementById('message-input');
+const usersList = document.getElementById('users-list');
+const userCount = document.getElementById('user-count');
 const connectionStatus = document.getElementById('connection-status');
 
 // State
@@ -22,62 +24,35 @@ let currentRoom = null;
 let username = null;
 let isAudioEnabled = true;
 let isVideoEnabled = true;
-let isScreenSharing = false;
 
 // STUN servers
 const configuration = {
     iceServers: [
         { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
-        { urls: 'stun:stun3.l.google.com:19302' },
-        { urls: 'stun:stun4.l.google.com:19302' }
+        { urls: 'stun:stun1.l.google.com:19302' }
     ]
 };
 
 // Connection status
 socket.on('connect', () => {
-    console.log('Connected');
-    connectionStatus.innerHTML = '🟢 Connected';
+    console.log('Connected to server');
+    connectionStatus.innerHTML = '🟢 Connected to server';
+    connectionStatus.style.color = '#28a745';
 });
 
 socket.on('disconnect', () => {
-    console.log('Disconnected');
+    console.log('Disconnected from server');
     connectionStatus.innerHTML = '🔴 Disconnected';
+    connectionStatus.style.color = '#dc3545';
 });
-
-// Get video grid based on device
-function getVideoGrid() {
-    return document.getElementById(isMobile ? 'video-grid-mobile' : 'video-grid-desktop');
-}
-
-// Get users list container
-function getUsersList() {
-    return document.getElementById(isMobile ? 'users-list-mobile' : 'users-list-desktop');
-}
-
-// Get chat messages container
-function getChatMessages() {
-    return document.getElementById(isMobile ? 'chat-messages-mobile' : 'chat-messages-desktop');
-}
-
-// Get message input
-function getMessageInput() {
-    return document.getElementById(isMobile ? 'message-input-mobile' : 'message-input-desktop');
-}
 
 // Join room
 async function joinRoom() {
-    const roomId = roomIdInput.value.trim().toUpperCase();
+    const roomId = roomInput.value.trim();
     const name = usernameInput.value.trim();
     
-    if (!name) {
-        alert('Please enter your name');
-        return;
-    }
-    
-    if (!roomId) {
-        alert('Please enter a room ID');
+    if (!name || !roomId) {
+        alert('Please enter name and room ID');
         return;
     }
     
@@ -85,50 +60,46 @@ async function joinRoom() {
     currentRoom = roomId;
     
     try {
-        // Mobile-friendly video constraints
-        const constraints = {
-            video: {
-                width: { ideal: isMobile ? 480 : 1280 },
-                height: { ideal: isMobile ? 360 : 720 },
-                facingMode: 'user'
-            },
-            audio: {
-                echoCancellation: true,
-                noiseSuppression: true,
-                autoGainControl: true
-            }
-        };
-        
-        localStream = await navigator.mediaDevices.getUserMedia(constraints);
+        // Request camera and microphone
+        console.log('Requesting camera and microphone...');
+        localStream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: true
+        });
         
         console.log('Media access granted');
+        console.log('Audio tracks:', localStream.getAudioTracks().length);
+        console.log('Video tracks:', localStream.getVideoTracks().length);
+        
+        // Make sure audio is enabled
+        localStream.getAudioTracks().forEach(track => {
+            track.enabled = true;
+            console.log('Audio track enabled:', track.label);
+        });
         
         // Add local video
         addLocalVideo();
         
         // Switch to main app
         joinScreen.style.display = 'none';
-        mainApp.classList.add('active');
+        mainApp.style.display = 'flex';
+        roomDisplay.textContent = `Room: ${roomId}`;
         
-        // Update room display
-        if (isMobile) {
-            document.getElementById('room-display-mobile').textContent = `Room: ${roomId}`;
-        } else {
-            document.getElementById('room-display').textContent = `Room: ${roomId}`;
-        }
-        
-        // Join room
-        socket.emit('join-room', roomId, username, isMobile);
+        // Join room via socket
+        socket.emit('join', {
+            room: roomId,
+            username: name
+        });
         
     } catch (err) {
         console.error('Media error:', err);
-        alert('Cannot access camera/microphone. Please check permissions.');
+        alert('Error accessing camera/microphone. Please check permissions.');
     }
 }
 
 function createRoom() {
     const roomId = 'ROOM-' + Math.random().toString(36).substring(2, 8).toUpperCase();
-    roomIdInput.value = roomId;
+    roomInput.value = roomId;
     joinRoom();
 }
 
@@ -137,14 +108,8 @@ function copyRoomId() {
     alert('Room ID copied!');
 }
 
-// Video management
+// Video functions
 function addLocalVideo() {
-    const videoGrid = getVideoGrid();
-    
-    // Remove existing
-    const existing = document.getElementById('local-container');
-    if (existing) existing.remove();
-    
     const container = document.createElement('div');
     container.className = 'video-container';
     container.id = 'local-container';
@@ -156,7 +121,9 @@ function addLocalVideo() {
     video.muted = true;
     video.srcObject = localStream;
     
-    video.play().catch(e => console.log('Video play error:', e));
+    video.onloadedmetadata = () => {
+        video.play().catch(e => console.log('Play error:', e));
+    };
     
     const label = document.createElement('div');
     label.className = 'video-label';
@@ -167,8 +134,7 @@ function addLocalVideo() {
     videoGrid.appendChild(container);
 }
 
-function addRemoteVideo(userId, username, stream) {
-    const videoGrid = getVideoGrid();
+function addRemoteVideo(userId, stream) {
     let container = document.getElementById(`remote-${userId}`);
     
     if (!container) {
@@ -184,7 +150,6 @@ function addRemoteVideo(userId, username, stream) {
         const label = document.createElement('div');
         label.className = 'video-label';
         label.id = `label-${userId}`;
-        label.textContent = username;
         
         container.appendChild(video);
         container.appendChild(label);
@@ -194,7 +159,9 @@ function addRemoteVideo(userId, username, stream) {
     const video = document.getElementById(`video-${userId}`);
     if (video && !video.srcObject) {
         video.srcObject = stream;
-        video.play().catch(e => console.log('Remote video play error:', e));
+        video.onloadedmetadata = () => {
+            video.play().catch(e => console.log('Remote play error:', e));
+        };
     }
 }
 
@@ -206,22 +173,37 @@ function removeRemoteVideo(userId) {
 }
 
 // Peer connection
-function createPeerConnection(targetUserId, targetUsername) {
+function createPeerConnection(targetUserId) {
     console.log('Creating peer connection for:', targetUserId);
     
     const pc = new RTCPeerConnection(configuration);
     
-    // Add tracks
+    // Add local tracks
     localStream.getTracks().forEach(track => {
         pc.addTrack(track, localStream);
+        console.log('Added track:', track.kind);
     });
     
     // Handle remote tracks
     pc.ontrack = (event) => {
-        console.log(`Received remote track from:`, targetUserId);
+        console.log('Received remote track from:', targetUserId, event.track.kind);
         
         if (event.streams && event.streams[0]) {
-            addRemoteVideo(targetUserId, targetUsername, event.streams[0]);
+            // Make sure audio is enabled
+            event.streams[0].getAudioTracks().forEach(track => {
+                track.enabled = true;
+            });
+            
+            addRemoteVideo(targetUserId, event.streams[0]);
+            
+            // Update label
+            const user = document.querySelector(`[data-user-id="${targetUserId}"]`);
+            if (user) {
+                const label = document.getElementById(`label-${targetUserId}`);
+                if (label) {
+                    label.textContent = user.textContent;
+                }
+            }
         }
     };
     
@@ -235,12 +217,14 @@ function createPeerConnection(targetUserId, targetUsername) {
         }
     };
     
-    // Connection state
+    // Log connection state
     pc.oniceconnectionstatechange = () => {
-        console.log(`ICE state with ${targetUserId}:`, pc.iceConnectionState);
+        console.log('ICE state with', targetUserId, ':', pc.iceConnectionState);
         
-        if (pc.iceConnectionState === 'disconnected' || 
-            pc.iceConnectionState === 'failed') {
+        if (pc.iceConnectionState === 'connected') {
+            console.log('Successfully connected to', targetUserId);
+        } else if (pc.iceConnectionState === 'disconnected' || 
+                   pc.iceConnectionState === 'failed') {
             removeRemoteVideo(targetUserId);
         }
     };
@@ -249,43 +233,37 @@ function createPeerConnection(targetUserId, targetUsername) {
     return pc;
 }
 
-// Socket events
-socket.on('all-users', (users) => {
+// Socket events for WebRTC
+socket.on('users', (users) => {
     console.log('Users in room:', users);
-    updateUsersList(users);
     
+    // Update users list
+    usersList.innerHTML = '';
     users.forEach(user => {
-        if (user.userId !== socket.id) {
-            createOffer(user.userId, user.username);
+        const badge = document.createElement('span');
+        badge.className = 'user-badge';
+        badge.dataset.userId = user.id;
+        badge.textContent = user.name;
+        if (user.id === socket.id) {
+            badge.textContent += ' (you)';
+        }
+        usersList.appendChild(badge);
+    });
+    
+    userCount.textContent = users.length;
+    
+    // Create connections to other users
+    users.forEach(user => {
+        if (user.id !== socket.id && !peerConnections[user.id]) {
+            createOffer(user.id);
         }
     });
 });
 
-socket.on('user-connected', (data) => {
-    console.log('User connected:', data);
-    addUserToList(data.userId, data.username);
+async function createOffer(targetUserId) {
+    const pc = createPeerConnection(targetUserId);
     
-    if (data.userId !== socket.id) {
-        createOffer(data.userId, data.username);
-    }
-});
-
-socket.on('user-disconnected', (data) => {
-    console.log('User disconnected:', data);
-    removeUserFromList(data.userId);
-    
-    if (peerConnections[data.userId]) {
-        peerConnections[data.userId].close();
-        delete peerConnections[data.userId];
-    }
-    
-    removeRemoteVideo(data.userId);
-});
-
-async function createOffer(targetUserId, targetUsername) {
     try {
-        const pc = createPeerConnection(targetUserId, targetUsername);
-        
         const offer = await pc.createOffer({
             offerToReceiveAudio: true,
             offerToReceiveVideo: true
@@ -295,9 +273,10 @@ async function createOffer(targetUserId, targetUsername) {
         
         socket.emit('offer', {
             target: targetUserId,
-            offer: offer,
-            senderUsername: username
+            offer: offer
         });
+        
+        console.log('Offer sent to:', targetUserId);
     } catch (err) {
         console.error('Offer error:', err);
     }
@@ -306,9 +285,9 @@ async function createOffer(targetUserId, targetUsername) {
 socket.on('offer', async (data) => {
     console.log('Received offer from:', data.sender);
     
+    const pc = createPeerConnection(data.sender);
+    
     try {
-        const pc = createPeerConnection(data.sender, data.senderUsername);
-        
         await pc.setRemoteDescription(data.offer);
         const answer = await pc.createAnswer();
         await pc.setLocalDescription(answer);
@@ -317,6 +296,8 @@ socket.on('offer', async (data) => {
             target: data.sender,
             answer: answer
         });
+        
+        console.log('Answer sent to:', data.sender);
     } catch (err) {
         console.error('Answer error:', err);
     }
@@ -348,252 +329,78 @@ socket.on('ice-candidate', async (data) => {
     }
 });
 
-// Users list
-function updateUsersList(users) {
-    const usersList = getUsersList();
-    usersList.innerHTML = '';
-    
-    // Add self
-    const selfBadge = document.createElement('span');
-    selfBadge.className = 'user-badge online';
-    selfBadge.textContent = `${username} (you)`;
-    usersList.appendChild(selfBadge);
-    
-    // Add others
-    users.forEach(user => {
-        if (user.userId !== socket.id) {
-            const badge = document.createElement('span');
-            badge.className = 'user-badge online';
-            badge.dataset.userId = user.userId;
-            badge.textContent = user.username + (user.isMobile ? ' 📱' : ' 💻');
-            usersList.appendChild(badge);
-        }
-    });
-}
-
-function addUserToList(userId, username) {
-    const usersList = getUsersList();
-    
-    // Check if already exists
-    if (document.querySelector(`[data-user-id="${userId}"]`)) return;
-    
-    const badge = document.createElement('span');
-    badge.className = 'user-badge online';
-    badge.dataset.userId = userId;
-    badge.textContent = username;
-    usersList.appendChild(badge);
-}
-
-function removeUserFromList(userId) {
-    const badge = document.querySelector(`[data-user-id="${userId}"]`);
-    if (badge) {
-        badge.remove();
-    }
-}
-
 // Chat
 socket.on('chat-message', (data) => {
     displayMessage(data);
 });
 
-function sendMessage(device) {
-    const input = getMessageInput();
-    const message = input.value.trim();
-    
+socket.on('chat-history', (history) => {
+    history.forEach(msg => displayMessage(msg));
+});
+
+function sendMessage() {
+    const message = messageInput.value.trim();
     if (message && currentRoom) {
-        socket.emit('chat-message', {
-            roomId: currentRoom,
+        const msgData = {
+            room: currentRoom,
             username: username,
-            message: message
-        });
-        input.value = '';
+            message: message,
+            time: new Date().toLocaleTimeString()
+        };
+        
+        socket.emit('chat-message', msgData);
+        messageInput.value = '';
     }
 }
 
-// Handle enter key
-document.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && !isMobile) {
-        sendMessage('desktop');
+messageInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        sendMessage();
     }
 });
 
-if (isMobile) {
-    document.getElementById('message-input-mobile').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            sendMessage('mobile');
-        }
-    });
-}
-
 function displayMessage(data) {
-    const chatMessages = getChatMessages();
+    const div = document.createElement('div');
+    div.className = `message ${data.username === username ? 'own' : ''}`;
     
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `message ${data.username === username ? 'own' : ''}`;
-    
-    messageDiv.innerHTML = `
+    div.innerHTML = `
         <div class="sender">${data.username}</div>
         <div class="text">${data.message}</div>
         <div class="time">${data.time}</div>
     `;
     
-    chatMessages.appendChild(messageDiv);
+    chatMessages.appendChild(div);
     chatMessages.scrollTop = chatMessages.scrollHeight;
-}
-
-// Mobile chat toggle
-function toggleChat() {
-    const chatPanel = document.getElementById('mobile-chat');
-    chatPanel.classList.toggle('open');
 }
 
 // Controls
 function toggleAudio() {
     if (localStream) {
-        const audioTrack = localStream.getAudioTracks()[0];
-        if (audioTrack) {
+        const track = localStream.getAudioTracks()[0];
+        if (track) {
             isAudioEnabled = !isAudioEnabled;
-            audioTrack.enabled = isAudioEnabled;
+            track.enabled = isAudioEnabled;
             
-            // Update buttons
-            const desktopBtn = document.getElementById('audio-btn-desktop');
-            const mobileBtn = document.getElementById('audio-btn-mobile');
-            
-            if (isAudioEnabled) {
-                desktopBtn.innerHTML = '🎤 <span>Mute</span>';
-                mobileBtn.innerHTML = '🎤';
-            } else {
-                desktopBtn.innerHTML = '🔇 <span>Unmute</span>';
-                mobileBtn.innerHTML = '🔇';
-            }
-            
-            desktopBtn.classList.toggle('active', isAudioEnabled);
-            desktopBtn.classList.toggle('inactive', !isAudioEnabled);
-            mobileBtn.classList.toggle('active', isAudioEnabled);
-            mobileBtn.classList.toggle('inactive', !isAudioEnabled);
+            const btn = document.getElementById('audio-btn');
+            btn.classList.toggle('active', isAudioEnabled);
+            btn.classList.toggle('inactive', !isAudioEnabled);
+            btn.innerHTML = isAudioEnabled ? '🎤 <span>Mute</span>' : '🔇 <span>Unmute</span>';
         }
     }
 }
 
 function toggleVideo() {
     if (localStream) {
-        const videoTrack = localStream.getVideoTracks()[0];
-        if (videoTrack) {
+        const track = localStream.getVideoTracks()[0];
+        if (track) {
             isVideoEnabled = !isVideoEnabled;
-            videoTrack.enabled = isVideoEnabled;
+            track.enabled = isVideoEnabled;
             
-            // Update buttons
-            const desktopBtn = document.getElementById('video-btn-desktop');
-            const mobileBtn = document.getElementById('video-btn-mobile');
-            
-            if (isVideoEnabled) {
-                desktopBtn.innerHTML = '📹 <span>Stop Video</span>';
-                mobileBtn.innerHTML = '📹';
-            } else {
-                desktopBtn.innerHTML = '🚫 <span>Start Video</span>';
-                mobileBtn.innerHTML = '🚫';
-            }
-            
-            desktopBtn.classList.toggle('active', isVideoEnabled);
-            desktopBtn.classList.toggle('inactive', !isVideoEnabled);
-            mobileBtn.classList.toggle('active', isVideoEnabled);
-            mobileBtn.classList.toggle('inactive', !isVideoEnabled);
+            const btn = document.getElementById('video-btn');
+            btn.classList.toggle('active', isVideoEnabled);
+            btn.classList.toggle('inactive', !isVideoEnabled);
+            btn.innerHTML = isVideoEnabled ? '📹 <span>Stop Video</span>' : '🚫 <span>Start Video</span>';
         }
-    }
-}
-
-async function toggleScreenShare() {
-    if (!isScreenSharing) {
-        try {
-            const screenStream = await navigator.mediaDevices.getDisplayMedia({
-                video: true
-            });
-            
-            const videoTrack = screenStream.getVideoTracks()[0];
-            
-            // Replace in peer connections
-            Object.values(peerConnections).forEach(pc => {
-                const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-                if (sender) {
-                    sender.replaceTrack(videoTrack);
-                }
-            });
-            
-            // Update local stream
-            const oldTrack = localStream.getVideoTracks()[0];
-            localStream.removeTrack(oldTrack);
-            localStream.addTrack(videoTrack);
-            
-            // Update local video
-            const localVideo = document.getElementById('local-video');
-            if (localVideo) {
-                localVideo.srcObject = localStream;
-            }
-            
-            videoTrack.onended = () => {
-                stopScreenShare();
-            };
-            
-            isScreenSharing = true;
-            
-            // Update buttons
-            const desktopBtn = document.getElementById('screen-btn-desktop');
-            const mobileBtn = document.getElementById('screen-btn-mobile');
-            
-            desktopBtn.innerHTML = '🖥️ <span>Stop Sharing</span>';
-            mobileBtn.innerHTML = '🖥️';
-            desktopBtn.classList.add('active');
-            mobileBtn.classList.add('active');
-            
-        } catch (err) {
-            console.error('Screen share error:', err);
-        }
-    } else {
-        stopScreenShare();
-    }
-}
-
-async function stopScreenShare() {
-    try {
-        const newStream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: false
-        });
-        
-        const videoTrack = newStream.getVideoTracks()[0];
-        
-        // Replace in peer connections
-        Object.values(peerConnections).forEach(pc => {
-            const sender = pc.getSenders().find(s => s.track?.kind === 'video');
-            if (sender) {
-                sender.replaceTrack(videoTrack);
-            }
-        });
-        
-        // Update local stream
-        const oldTrack = localStream.getVideoTracks()[0];
-        localStream.removeTrack(oldTrack);
-        localStream.addTrack(videoTrack);
-        
-        // Update local video
-        const localVideo = document.getElementById('local-video');
-        if (localVideo) {
-            localVideo.srcObject = localStream;
-        }
-        
-        isScreenSharing = false;
-        
-        // Update buttons
-        const desktopBtn = document.getElementById('screen-btn-desktop');
-        const mobileBtn = document.getElementById('screen-btn-mobile');
-        
-        desktopBtn.innerHTML = '🖥️ <span>Share Screen</span>';
-        mobileBtn.innerHTML = '🖥️';
-        desktopBtn.classList.remove('active');
-        mobileBtn.classList.remove('active');
-        
-    } catch (err) {
-        console.error('Stop screen share error:', err);
     }
 }
 
@@ -605,29 +412,19 @@ function leaveRoom() {
     // Stop local stream
     if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
+        localStream = null;
     }
     
-    // Clear video grids
-    document.getElementById('video-grid-desktop').innerHTML = '';
-    document.getElementById('video-grid-mobile').innerHTML = '';
-    
-    // Clear chats
-    document.getElementById('chat-messages-desktop').innerHTML = '';
-    document.getElementById('chat-messages-mobile').innerHTML = '';
-    
-    // Clear users lists
-    document.getElementById('users-list-desktop').innerHTML = '';
-    document.getElementById('users-list-mobile').innerHTML = '';
-    
-    // Close mobile chat if open
-    document.getElementById('mobile-chat').classList.remove('open');
+    // Clear everything
+    videoGrid.innerHTML = '';
+    chatMessages.innerHTML = '';
+    usersList.innerHTML = '';
     
     // Show join screen
-    mainApp.classList.remove('active');
+    mainApp.style.display = 'none';
     joinScreen.style.display = 'block';
     
     // Reset
     currentRoom = null;
     username = null;
-    isScreenSharing = false;
 }
