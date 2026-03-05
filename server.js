@@ -10,13 +10,13 @@ const io = socketIO(server, {
     origin: "*",
     methods: ["GET", "POST"]
   },
-  transports: ['websocket', 'polling']
+  transports: ['websocket', 'polling'],
+  allowEIO3: true
 });
 
-// Store rooms and users
+// Store rooms
 const rooms = new Map();
 
-// Serve static files
 app.use(express.static('public'));
 
 app.get('/', (req, res) => {
@@ -29,7 +29,6 @@ io.on('connection', (socket) => {
     socket.on('join-room', (roomId, username) => {
         console.log(`${username} joining ${roomId}`);
         
-        // Leave previous rooms
         socket.rooms.forEach(room => {
             if (room !== socket.id) {
                 socket.leave(room);
@@ -38,25 +37,23 @@ io.on('connection', (socket) => {
 
         socket.join(roomId);
         
-        // Store user
         if (!rooms.has(roomId)) {
             rooms.set(roomId, new Map());
         }
         rooms.get(roomId).set(socket.id, username);
+
+        // Send existing users to new user
+        const users = Array.from(rooms.get(roomId)).map(([id, name]) => ({
+            userId: id,
+            username: name
+        }));
+        socket.emit('all-users', users);
 
         // Notify others
         socket.to(roomId).emit('user-connected', {
             userId: socket.id,
             username: username
         });
-
-        // Send existing users
-        const users = Array.from(rooms.get(roomId)).map(([id, name]) => ({
-            userId: id,
-            username: name
-        }));
-        
-        socket.emit('room-users', users);
     });
 
     // WebRTC signaling

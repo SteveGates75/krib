@@ -1,7 +1,7 @@
 {
-  "name": "simple-video-chat",
+  "name": "video-chat-fixed",
   "version": "1.0.0",
-  "description": "Simple working video chat app",
+  "description": "Video chat that works on all browsers",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
