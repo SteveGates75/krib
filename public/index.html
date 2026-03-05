@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Discord Clone</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Login Screen -->
+        <div id="login-screen" class="screen">
+            <h1>🎥 My Discord Clone</h1>
+            <div class="login-form">
+                <input type="text" id="username-input" placeholder="Enter your name" required>
+                <div class="room-options">
+                    <input type="text" id="room-id-input" placeholder="Room ID (leave empty for new room)">
+                    <button onclick="joinRoom()">Join Room</button>
+                    <button onclick="createRoom()" class="secondary">Create New Room</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main App Screen -->
+        <div id="main-screen" class="screen hidden">
+            <div class="main-container">
+                <!-- Sidebar -->
+                <div class="sidebar">
+                    <div class="room-info">
+                        <h3 id="current-room">Room: </h3>
+                        <button onclick="copyRoomId()" class="copy-btn">📋 Copy Room ID</button>
+                    </div>
+                    <div class="users-list">
+                        <h4>Users Online</h4>
+                        <div id="users-container"></div>
+                    </div>
+                    <div class="controls">
+                        <button onclick="toggleAudio()" id="audio-btn" class="control-btn active">🎤 Mute</button>
+                        <button onclick="toggleVideo()" id="video-btn" class="control-btn active">📹 Stop Video</button>
+                        <button onclick="toggleScreenShare()" id="screen-btn" class="control-btn">🖥️ Share Screen</button>
+                        <button onclick="leaveRoom()" class="control-btn danger">🚪 Leave</button>
+                    </div>
+                </div>
+
+                <!-- Main Content -->
+                <div class="main-content">
+                    <!-- Video Grid -->
+                    <div class="video-grid" id="video-grid">
+                        <div class="video-container" id="local-video-container">
+                            <video id="local-video" autoplay playsinline muted></video>
+                            <div class="video-label">You</div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Section -->
+                    <div class="chat-section">
+                        <div class="chat-header">
+                            <h4>Chat</h4>
+                        </div>
+                        <div class="chat-messages" id="chat-messages"></div>
+                        <div class="chat-input">
+                            <input type="text" id="message-input" placeholder="Type a message..." onkeypress="handleKeyPress(event)">
+                            <button onclick="sendMessage()">Send</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Socket.io and client script -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+</body>
+</html>
